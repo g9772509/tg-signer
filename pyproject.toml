@@ -42,6 +42,9 @@ speedup = [
 gui = [
     "nicegui"
 ]
+yaml = [
+    "pyyaml"
+]
 
 [project.urls]
 Homepage = "https://github.com/amchii/tg-signer"
