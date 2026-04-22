@@ -1,8 +1,9 @@
 import re
 from datetime import time
 from enum import Enum
-from functools import cached_property
 from typing import (
+    Annotated,
+    Any,
     ClassVar,
     Dict,
     List,
@@ -13,7 +14,14 @@ from typing import (
     Union,
 )
 
-from pydantic import AnyHttpUrl, BaseModel, ValidationError, field_validator
+from pydantic import (
+    AnyHttpUrl,
+    BaseModel,
+    ConfigDict,
+    Field,
+    ValidationError,
+    field_validator,
+)
 from pyrogram.types import Chat, Message
 from typing_extensions import Self, TypeAlias
 
@@ -418,7 +426,7 @@ class MatchConfig(BaseJSONConfig):
             f" default_send_text={self.default_send_text}, send_text_search_regex={self.send_text_search_regex}"
         )
 
-    @cached_property
+    @property
     def from_user_set(self):
         return {
             (
@@ -514,3 +522,97 @@ class MonitorConfig(BaseJSONConfig):
     @property
     def requires_ai(self) -> bool:
         return any(cfg.requires_ai for cfg in self.match_cfgs)
+
+
+TextRuleT: TypeAlias = MatchRuleT
+
+
+class MessageTriggerParams(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    chat_id: Optional[Union[int, str]] = None
+    chat_ids: Optional[List[Union[int, str]]] = None
+    from_user_ids: Optional[List[Union[int, str]]] = None
+    reply_to_me: bool = False
+    reply_to_message_id: Optional[int] = None
+    ignore_case: bool = True
+
+
+class TimerTriggerParams(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    chat_id: Optional[Union[int, str]] = None
+    cron: Optional[str] = None
+    interval_seconds: Optional[int] = None
+    random_seconds: int = 0
+
+
+class StartupTriggerParams(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    chat_id: Optional[Union[int, str]] = None
+
+
+class BaseTriggerConfig(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    id: Optional[str] = None
+
+
+class MessageTriggerConfig(BaseTriggerConfig):
+    type: Literal["message"]
+    params: MessageTriggerParams = Field(default_factory=MessageTriggerParams)
+
+
+class TimerTriggerConfig(BaseTriggerConfig):
+    type: Literal["timer"]
+    params: TimerTriggerParams = Field(default_factory=TimerTriggerParams)
+
+
+class StartupTriggerConfig(BaseTriggerConfig):
+    type: Literal["startup"]
+    params: StartupTriggerParams = Field(default_factory=StartupTriggerParams)
+
+
+TriggerConfig: TypeAlias = Annotated[
+    Union[MessageTriggerConfig, TimerTriggerConfig, StartupTriggerConfig],
+    Field(discriminator="type"),
+]
+
+
+class FilterConfig(BaseModel):
+    chat_id: Optional[Union[int, str]] = None
+    chat_ids: Optional[List[Union[int, str]]] = None
+    from_user_ids: Optional[List[Union[int, str]]] = None
+    text_rule: TextRuleT = "all"
+    text_value: Optional[str] = None
+    ignore_case: bool = True
+
+
+class HandlerConfig(BaseModel):
+    handler: str
+    params: Dict[str, Any] = Field(default_factory=dict)
+
+
+class RuleConfig(BaseModel):
+    id: str
+    enabled: bool = True
+    triggers: List[TriggerConfig]
+    filters: Optional[FilterConfig] = None
+    handlers: List[HandlerConfig]
+    vars: Dict[str, Any] = Field(default_factory=dict)
+
+
+class AutomationConfig(BaseJSONConfig):
+    version: ClassVar = 1
+    is_current: ClassVar = True
+
+    rules: List[RuleConfig] = Field(default_factory=list)
+
+    @property
+    def requires_ai(self) -> bool:
+        for rule in self.rules:
+            for handler in rule.handlers:
+                if handler.handler == "ai_reply":
+                    return True
+        return False
