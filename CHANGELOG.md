@@ -2,6 +2,11 @@
 
 ## 版本变动日志
 
+### 0.9.0b2
+- 修复连续动作处理中已消费消息占位导致 `wait_for` 崩溃的问题
+- `根据图片选择选项` 动作支持图片与 InlineKeyboard 按钮分离的验证码场景
+- 将版本变动日志从 README 移至独立的 `CHANGELOG.md`
+
 ### 0.9.0b1
 - 监控配置支持 `send_text_template`，可将正则捕获结果或消息文本渲染到自动回复内容中
 - 修复图片消息中的计算题无法识别 `caption` 的问题
@@ -96,6 +101,11 @@
 - 调用 AI 识别图片点击键盘
 
 ## Changelog
+
+### 0.9.0b2
+- Fix `wait_for` crashes caused by consumed message placeholders during multi-action flows
+- Support captcha flows where the image and InlineKeyboard buttons are sent as separate messages for `ChooseOptionByImageAction`
+- Move the changelog out of README files and into standalone `CHANGELOG.md`
 
 ### 0.9.0b1
 - Add `send_text_template` support for monitor configs, allowing regex captures or message text to be rendered into automatic replies
